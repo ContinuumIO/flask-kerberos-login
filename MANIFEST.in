@@ -1,0 +1,2 @@
+include versioneer.py
+include flask_kerberos_login/_version.py
