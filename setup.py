@@ -10,6 +10,9 @@ setup(
     url='http://github.com/ContinuumIO/flask-kerberos-login',
     description='Kerberos authentication compatible with flask-login',
     packages=find_packages(),
-    install_requires=[],
+    install_requires=[
+        'flask',
+        'python-gssapi',
+    ],
 )
 
