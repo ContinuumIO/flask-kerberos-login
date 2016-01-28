@@ -12,7 +12,8 @@ setup(
     packages=find_packages(),
     install_requires=[
         'flask',
-        'kerberos',
+        'flask-login',
+        'pykerberos',
     ],
 )
 
