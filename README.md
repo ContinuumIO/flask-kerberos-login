@@ -11,6 +11,7 @@ in the application code the dependency on Kerberos.
 License
 =======
 
-BSD licensed.
+Copyright © 2016, Continuum Analytics under the [BSD 2-Clause
+license](https://opensource.org/licenses/BSD-2-Clause).
 
 
