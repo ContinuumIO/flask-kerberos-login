@@ -8,10 +8,17 @@ This library is meant to integrate with
 [flask-login](https://github.com/maxcountryman/flask-login) to avoid declaring
 in the application code the dependency on Kerberos.
 
+Testing
+=======
+
+```sh
+python setup.py develop
+pip install -r dev-requirements.txt
+python -m unittest discover
+```
+
 License
 =======
 
 Copyright © 2016, Continuum Analytics under the [BSD 2-Clause
 license](https://opensource.org/licenses/BSD-2-Clause).
-
-

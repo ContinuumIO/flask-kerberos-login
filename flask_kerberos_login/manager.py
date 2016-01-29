@@ -9,21 +9,11 @@ import socket
 from flask import _request_ctx_stack as stack
 from flask import abort
 from flask import request
-from flask import Response
-from werkzeug.exceptions import HTTPException
 import kerberos
+
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
-
-
-def negotiate(token=None):
-    '''Generate 'WWW-Authenticate' header value'''
-    header = 'Negotiate'
-    if token:
-        header += ' ' + token
-
-    return header
 
 
 def _gssapi_authenticate(token, service_name):
@@ -44,7 +34,7 @@ def _gssapi_authenticate(token, service_name):
     try:
         rc, state = kerberos.authGSSServerInit(service_name)
         if rc != kerberos.AUTH_GSS_COMPLETE:
-            log.info('Unable to initialize server context')
+            log.warn('Unable to initialize server context')
             return None
         rc = kerberos.authGSSServerStep(state, token)
         if rc == kerberos.AUTH_GSS_COMPLETE:
@@ -65,9 +55,9 @@ def _gssapi_authenticate(token, service_name):
         if state:
             kerberos.authGSSServerClean(state)
 
+
 def default_save_callback(user):
-    stack.top.kerberos_user = user
-    return user
+    pass
 
 
 class KerberosLoginManager(object):
@@ -114,6 +104,11 @@ class KerberosLoginManager(object):
 
 
     def extract_token(self):
+        '''
+        Extracts a token from the current HTTP request if it is available.
+
+        Invokes the `save_user` callback if authentication is successful.
+        '''
         header = request.headers.get(b'authorization')
         if header and header.startswith(b'Negotiate '):
             token = header[10:]
@@ -129,8 +124,10 @@ class KerberosLoginManager(object):
         '''
         Adds WWW-Authenticate header with SPNEGO challenge or Kerberos token
         '''
-        kerberos_token = getattr(stack.top, 'kerberos_token', None)
-        if response.status_code == 401 or kerberos_token:
-            response.headers['WWW-Authenticate'] = negotiate(kerberos_token)
+        token = getattr(stack.top, 'kerberos_token', None)
+        if response.status_code == 401:
+            response.headers['WWW-Authenticate'] = 'Negotiate'
+        elif token:
+            response.headers['WWW-Authenticate'] = 'Negotiate {}'.format(token)
 
         return response
