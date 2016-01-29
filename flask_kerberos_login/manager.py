@@ -3,7 +3,6 @@ Provides a pluggable login manager that uses Kerberos for authentication
 '''
 from __future__ import absolute_import, print_function, unicode_literals
 
-import base64
 import logging
 import socket
 
@@ -14,9 +13,9 @@ from flask import Response
 from werkzeug.exceptions import HTTPException
 import kerberos
 
-
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
+
 
 def negotiate(token=None):
     '''Generate 'WWW-Authenticate' header value'''
@@ -66,11 +65,15 @@ def _gssapi_authenticate(token, service_name):
         if state:
             kerberos.authGSSServerClean(state)
 
+def default_save_callback(user):
+    stack.top.kerberos_user = user
+    return user
+
 
 class KerberosLoginManager(object):
 
     def __init__(self, app=None):
-        self._save_user = None
+        self._save_user = default_save_callback
         self._service_name = None
         self.app = app
 
@@ -92,6 +95,7 @@ class KerberosLoginManager(object):
         '''
         self.app = app
         app.kerberos_manager = self
+        app.before_request(self.extract_token)
         app.after_request(self.append_header)
         self.init_config(app.config)
 
@@ -103,10 +107,22 @@ class KerberosLoginManager(object):
 
         try:
             principal = kerberos.getServerPrincipalDetails(service, hostname)
-        except kerberos.KrbError as exc:
+        except kerberos.KrbError:
             log.warn("Error initializing Kerberos", exc_info=True)
         else:
             log.info("Server principal is %s", principal)
+
+
+    def extract_token(self):
+        header = request.headers.get(b'authorization')
+        if header and header.startswith(b'Negotiate '):
+            token = header[10:]
+            rc = _gssapi_authenticate(token, self._service_name)
+            if rc == kerberos.AUTH_GSS_COMPLETE:
+                self._save_user(stack.top.kerberos_user)
+            else:
+                # Invalid Kerberos ticket, we could not complete authentication
+                abort(403)
 
 
     def append_header(self, response):
@@ -118,31 +134,3 @@ class KerberosLoginManager(object):
             response.headers['WWW-Authenticate'] = negotiate(kerberos_token)
 
         return response
-
-
-    def load_user(self, request):
-        '''
-        Extract a user from the current request
-
-        Raises:
-
-            HTTPException: 401 status if the authentication is incomplete
-        '''
-        kerberos_user = getattr(stack.top, 'kerberos_user', None)
-        if kerberos_user:
-            return kerberos_user
-
-        header = request.headers.get(b'authorization')
-        if header and header.startswith(b'Negotiate '):
-
-            in_token = header[10:]
-            rc = _gssapi_authenticate(in_token, self._service_name)
-            if rc == kerberos.AUTH_GSS_COMPLETE:
-                user = self._save_user(stack.top.kerberos_user)
-                return user
-            # else:
-            #     abort(403)
-
-            # else:
-            #     abort(401)
-

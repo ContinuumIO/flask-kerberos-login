@@ -11,7 +11,7 @@ setup(
     description='Kerberos authentication compatible with flask-login',
     packages=find_packages(),
     install_requires=[
-        'flask',
+        'Flask',
         'flask-login',
         'pykerberos',
     ],
