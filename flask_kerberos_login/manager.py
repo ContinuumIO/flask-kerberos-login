@@ -16,7 +16,7 @@ import kerberos
 
 
 log = logging.getLogger(__name__)
-
+log.addHandler(logging.NullHandler())
 
 def negotiate(token=None):
     '''Generate 'WWW-Authenticate' header value'''
@@ -40,7 +40,6 @@ def _gssapi_authenticate(token, service_name):
 
     Returns: (int | None) gssapi return code or None on failure
     '''
-    print(token)
     state = None
     ctx = stack.top
     try:
@@ -129,13 +128,21 @@ class KerberosLoginManager(object):
 
             HTTPException: 401 status if the authentication is incomplete
         '''
+        kerberos_user = getattr(stack.top, 'kerberos_user', None)
+        if kerberos_user:
+            return kerberos_user
+
         header = request.headers.get(b'authorization')
         if header and header.startswith(b'Negotiate '):
 
             in_token = header[10:]
             rc = _gssapi_authenticate(in_token, self._service_name)
             if rc == kerberos.AUTH_GSS_COMPLETE:
-                return self._save_user(stack.top.kerberos_user)
-            else:
-                abort(401)
+                user = self._save_user(stack.top.kerberos_user)
+                return user
+            # else:
+            #     abort(403)
+
+            # else:
+            #     abort(401)
 
