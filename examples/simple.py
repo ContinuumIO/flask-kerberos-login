@@ -44,9 +44,6 @@ def save_user(email):
     user = users[email] = User(email)
     # generate a cookie/session for this user the first time we see them.
     login_user(user)
-    return user
-
-login_manager.request_loader(app.kerberos_manager.load_user)
 
 @app.route('/')
 @login_required
