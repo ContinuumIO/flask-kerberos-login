@@ -126,7 +126,8 @@ class KerberosLoginManager(object):
         '''
         token = getattr(stack.top, 'kerberos_token', None)
         if response.status_code == 401:
-            response.headers['WWW-Authenticate'] = 'Negotiate'
+            # Negotiate is an additional authenticate method.
+            response.headers.add('WWW-Authenticate', 'Negotiate')
         elif token:
             response.headers['WWW-Authenticate'] = 'Negotiate {}'.format(token)
 
