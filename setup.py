@@ -9,6 +9,7 @@ setup(
     author_email='dludwig@continuum.io',
     url='http://github.com/ContinuumIO/flask-kerberos-login',
     description='Kerberos authentication compatible with flask-login',
+    license='BSD License',
     packages=find_packages(),
     install_requires=[
         'Flask',

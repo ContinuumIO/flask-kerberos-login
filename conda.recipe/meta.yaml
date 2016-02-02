@@ -1,0 +1,31 @@
+{% set data = load_setuptools()%}
+package:
+  name: flask-kerberos-login
+  version: {{data.get('version')}}
+
+build:
+  script:
+    - cd $RECIPE_DIR/..
+    - $PYTHON setup.py install --single-version-externally-managed --record=record.txt
+
+requirements:
+  build:
+    - python
+    - setuptools
+  run:
+    - python
+    - setuptools
+    - flask
+    - flask-login
+    - pykerberos
+
+test:
+  imports:
+    - flask_kerberos_login
+    - flask_kerberos_login.manager
+
+
+about:
+  home: {{data.get('url')}}
+  license: {{data.get('license')}}
+
