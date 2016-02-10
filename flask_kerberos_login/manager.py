@@ -19,38 +19,39 @@ log.addHandler(logging.NullHandler())
 def _gssapi_authenticate(token, service_name):
     '''
     Performs GSSAPI Negotiate Authentication
-    On success also stashes the server response token for mutual authentication
-    at the top of request context with the name kerberos_token, along with the
-    authenticated user principal with the name kerberos_user.
 
     Parameters:
         token (str): GSSAPI Authentication Token
         service_name (str): GSSAPI service name
 
-    Returns: (int | None) gssapi return code or None on failure
+    Returns:
+        tuple of
+        (str | None) username
+        (str | None) GSSAPI token
     '''
     state = None
-    ctx = stack.top
+
     try:
         rc, state = kerberos.authGSSServerInit(service_name)
         if rc != kerberos.AUTH_GSS_COMPLETE:
             log.warn('Unable to initialize server context')
-            return None
+            return None, None
         rc = kerberos.authGSSServerStep(state, token)
         if rc == kerberos.AUTH_GSS_COMPLETE:
             log.debug('Completed GSSAPI negotiation')
-            ctx.kerberos_token = kerberos.authGSSServerResponse(state)
-            ctx.kerberos_user = kerberos.authGSSServerUserName(state)
-            return rc
+            return (
+                kerberos.authGSSServerUserName(state),
+                kerberos.authGSSServerResponse(state),
+            )
         elif rc == kerberos.AUTH_GSS_CONTINUE:
             log.debug('Continuing GSSAPI negotiation')
             return kerberos.AUTH_GSS_CONTINUE
         else:
             log.info('Unable to step server context')
-            return None
+            return None, None
     except kerberos.GSSError:
         log.info('Unable to authenticate', exc_info=True)
-        return None
+        return None, None
     finally:
         if state:
             kerberos.authGSSServerClean(state)
@@ -112,9 +113,12 @@ class KerberosLoginManager(object):
         header = request.headers.get(b'authorization')
         if header and header.startswith(b'Negotiate '):
             token = header[10:]
-            rc = _gssapi_authenticate(token, self._service_name)
-            if rc == kerberos.AUTH_GSS_COMPLETE:
-                self._save_user(stack.top.kerberos_user)
+            user, token = _gssapi_authenticate(token, self._service_name)
+            if token is not None:
+                stack.top.kerberos_token = token
+
+            if user is not None:
+                self._save_user(user)
             else:
                 # Invalid Kerberos ticket, we could not complete authentication
                 abort(403)
