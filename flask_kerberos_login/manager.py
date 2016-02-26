@@ -99,7 +99,7 @@ class KerberosLoginManager(object):
         try:
             principal = kerberos.getServerPrincipalDetails(service, hostname)
         except kerberos.KrbError:
-            log.warn("Error initializing Kerberos", exc_info=True)
+            log.warn("Error initializing Kerberos for %s", self._service_name, exc_info=True)
         else:
             log.info("Server principal is %s", principal)
 
